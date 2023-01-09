@@ -1,25 +1,95 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useState, useEffect } from 'react';
+import * as C from './App.styles';
+import { Item } from './types/Item';
+import { categories } from './data/categories';
+import { items } from './data/items';
+import { getCurrentMonth, filterListByMonth } from './helpers/dateFilter';
+import { TableArea } from './components/TableArea';
+import { InfoArea } from './components/InfoArea';
+import { InputArea } from './components/InputArea';
+import GlobalStyle from './styles/global'
+import { DefaultTheme, ThemeProvider } from 'styled-components';
+import light from './styles/themes/light';
+import dark from './styles/themes/dark'
+import Switch from 'react-switch'
+import { usePersistedState } from './hooks/usePersistedState';
 
-function App() {
+const App = () => {
+  const [list, setList] = useState(items);
+  const [filteredList, setFilteredList] = useState<Item[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
+  const [income, setIncome] = useState(0);
+  const [expense, setExpense] = useState(0);
+  const [theme, setTheme] = usePersistedState<DefaultTheme>('theme', light)
+
+  const toggleTheme = () => {
+    setTheme(theme.title === 'light' ? dark : light)
+  }
+
+  useEffect(()=>{
+    setFilteredList( filterListByMonth(list, currentMonth) );
+  }, [list, currentMonth]);
+
+  useEffect(()=>{
+    let incomeCount = 0;
+    let expenseCount = 0;
+
+    for(let i in filteredList) {
+      if(categories[filteredList[i].category].expense) {
+        expenseCount += filteredList[i].value;
+      } else {
+        incomeCount += filteredList[i].value;
+      }
+    }
+
+    setIncome(incomeCount);
+    setExpense(expenseCount);
+  }, [filteredList]);
+
+  const handleMonthChange = (newMonth: string) => {
+    setCurrentMonth(newMonth);
+  }
+
+  const handleAddItem = (item: Item) => {
+    let newList = [...list];
+    newList.push(item);
+    setList(newList);
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider theme={theme}>
+      <C.Container>
+        <C.Header>
+          <C.HeaderText>Sistema Financeiro</C.HeaderText>
+             <Switch 
+              onChange={toggleTheme}
+              checked={theme.title === 'dark'}
+              checkedIcon={false}
+              uncheckedIcon={false}
+              height={10}
+              width={40}
+              handleDiameter={20}
+              offColor="#818cf8"
+              onColor="#60a5fa"
+            />
+        </C.Header>
+        <C.Body>
+          
+          <InfoArea
+            currentMonth={currentMonth}
+            onMonthChange={handleMonthChange}
+            income={income}
+            expense={expense}
+          />
+
+          <InputArea onAdd={handleAddItem} />
+
+          <TableArea list={filteredList} />
+
+        </C.Body>
+        <GlobalStyle />
+      </C.Container>
+    </ThemeProvider>
   );
 }
 
